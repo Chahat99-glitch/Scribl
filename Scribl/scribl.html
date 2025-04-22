@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scribl - Sketch Chat</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // --- Use CSS Variables ---
+                        'paper': 'var(--bg-paper)',
+                        'ink': 'var(--text-ink)',
+                        'stroke': 'var(--border-stroke)',
+                        'accent': {
+                            'primary': 'var(--accent-primary)',
+                            'secondary': 'var(--accent-secondary)',
+                            'tertiary': 'var(--accent-tertiary)',
+                            'danger': 'var(--accent-danger)',
+                            'danger-light': 'var(--accent-danger-light)',
+                        },
+                        'bubble': {
+                            'user': 'var(--message-bubble-user)',
+                            'other': 'var(--message-bubble-other)',
+                            'user-text': 'var(--message-bubble-user-text)',
+                            'other-text': 'var(--message-bubble-other-text)',
+                        },
+                        'scrollbar': {
+                            'thumb': 'var(--scrollbar-thumb)',
+                            'track': 'var(--scrollbar-track)',
+                        },
+                         // Keep direct colors for potential specific use, but prefer variables
+                        'highlight-direct': {
+                            yellow: '#FDE047', teal: '#5EEAD4', orange: '#FB923C',
+                            pink: '#F9A8D4', lime: '#A3E635', fuchsia: '#D946EF',
+                            sky: '#38BDF8', rose: '#FB7185',
+                        },
+                    },
+                    borderRadius: {
+                        'DEFAULT': '0.3rem', 'lg': '0.5rem', 'xl': '0.75rem', '2xl': '1rem', '3xl': '1.5rem',
+                        '4xl': '1.5rem', '5xl': '1.5rem',
+                    },
+                    fontFamily: {
+                        sans: ['"Patrick Hand"', 'cursive', 'ui-sans-serif', 'system-ui'],
+                    },
+                    borderWidth: {
+                        'DEFAULT': '1.5px', '0': '0', '2': '2.5px', '3': '3.5px', '4': '4.5px',
+                    },
+                    boxShadow: {
+                        // Shadow color uses the stroke variable now
+                        'DEFAULT': '3px 3px 0px var(--border-stroke-shadow)',
+                        'md': '4px 4px 0px var(--border-stroke-shadow)',
+                        'lg': '6px 6px 0px var(--border-stroke-shadow)',
+                        'xl': '8px 8px 0px var(--border-stroke-shadow)',
+                        'inner': 'inset 2px 2px 3px rgba(0,0,0,0.15)',
+                        'none': 'none',
+                        // Focus uses primary accent
+                        'focus': '0 0 0 3px var(--accent-primary-focus)',
+                    },
+                     keyframes: { // Unchanged
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        fadeOut: { '0%': { opacity: '1' }, '100%': { opacity: '0' } },
+                        scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        scaleOut: { '0%': { opacity: '1', transform: 'scale(1)' }, '100%': { opacity: '0', transform: 'scale(0.95)' } },
+                        slideInUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' }, },
+                        bounceIn: { '0%, 100%': { transform: 'translateY(0) scale(1)', opacity: 1 }, '50%': { transform: 'translateY(-6px) scale(1.05)', opacity: 0.9 }, }
+                      },
+                      animation: { // Unchanged
+                        'modal-backdrop-in': 'fadeIn 0.2s ease-out forwards', 'modal-backdrop-out': 'fadeOut 0.2s ease-in forwards',
+                        'modal-content-in': 'scaleIn 0.3s ease-out 0.1s forwards', 'modal-content-out': 'scaleOut 0.2s ease-in forwards',
+                        'slide-in-up': 'slideInUp 0.3s ease-out forwards', 'bounce-in': 'bounceIn 0.5s ease-out forwards',
+                      }
+                }
+            }
+        }
+    </script>
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Define CSS Variables for Themes --- */
+        :root {
+            /* Default Theme: Scribl (Yellow/Teal) */
+            --bg-paper: #FDFCF8;
+            --text-ink: #1E1E1E;
+            --border-stroke: #222222;
+            --border-stroke-shadow: rgba(0,0,0,0.9); /* For shadows */
+            --accent-primary: #FDE047; /* Yellow */
+            --accent-primary-focus: rgba(253, 224, 71, 0.6); /* Yellow transparent */
+            --accent-secondary: #5EEAD4; /* Teal */
+            --accent-tertiary: #F9A8D4; /* Pink */
+            --accent-danger: #EF4444; /* Red-500 */
+            --accent-danger-light: #FECACA; /* Red-200 */
+
+            --message-bubble-user: var(--accent-primary);
+            --message-bubble-other: #FFFFFF;
+            --message-bubble-user-text: var(--text-ink);
+            --message-bubble-other-text: var(--text-ink);
+
+            --scrollbar-thumb: var(--accent-primary);
+            --scrollbar-track: rgba(253, 252, 248, 0.8); /* Slightly transparent paper */
+
+            --avatar-background: #D1D5DB; /* Default gray */
+        }
+
+        /* Define other themes by overriding variables */
+        .theme-ocean {
+            --bg-paper: #F0F9FF; /* sky-50 */
+            --text-ink: #075985; /* sky-900 */
+            --border-stroke: #0EA5E9; /* sky-500 */
+            --border-stroke-shadow: rgba(14, 165, 233, 0.6);
+            --accent-primary: #38BDF8; /* sky-400 */
+            --accent-primary-focus: rgba(56, 189, 248, 0.5);
+            --accent-secondary: #51d5e6; /* cyan-300 */
+            --accent-tertiary: #FBCFE8; /* pink-200 */
+            --accent-danger: #F43F5E; /* rose-500 */
+            --accent-danger-light: #FECDD3; /* rose-200 */
+            --message-bubble-user: var(--accent-primary);
+            --message-bubble-other: #E0F2FE; /* sky-100 */
+            --scrollbar-thumb: var(--accent-primary);
+            --scrollbar-track: rgba(240, 249, 255, 0.8);
+            --avatar-background: #BFDBFE; /* blue-200 */
+        }
+
+        .theme-forest {
+            --bg-paper: #F7FEE7; /* lime-50 */
+            --text-ink: #365314; /* lime-900 */
+            --border-stroke: #84CC16; /* lime-500 */
+             --border-stroke-shadow: rgba(132, 204, 22, 0.7);
+            --accent-primary: #a1ea2b; /* lime-400 */
+            --accent-primary-focus: rgba(163, 230, 53, 0.5);
+            --accent-secondary: #FCD34D; /* yellow-400 */
+            --accent-tertiary: #FDBA74; /* orange-300 */
+            --accent-danger: #DC2626; /* red-600 */
+            --accent-danger-light: #FEE2E2; /* red-100 */
+            --message-bubble-user: var(--accent-primary);
+            --message-bubble-other: #ECFCCB; /* lime-100 */
+             --message-bubble-user-text: #4d7c0f; /* lime-800 for contrast */
+            --scrollbar-thumb: var(--accent-primary);
+            --scrollbar-track: rgba(247, 254, 231, 0.8);
+            --avatar-background: #BEF264; /* lime-300 */
+        }
+
+        .theme-sunset {
+            --bg-paper: #FFF7ED; /* orange-50 */
+            --text-ink: #7C2D12; /* orange-900 */
+            --border-stroke: #F97316; /* orange-500 */
+            --border-stroke-shadow: rgba(249, 115, 22, 0.7);
+            --accent-primary: #f77834; /* orange-400 */
+            --accent-primary-focus: rgba(251, 146, 60, 0.5);
+            --accent-secondary: #FACC15; /* yellow-500 */
+            --accent-tertiary: #F472B6; /* pink-400 */
+            --accent-danger: #B91C1C; /* red-700 */
+            --accent-danger-light: #FECACA; /* red-200 */
+            --message-bubble-user: var(--accent-primary);
+            --message-bubble-other: #FFEEDC; /* orange-100 */
+            --scrollbar-thumb: var(--accent-primary);
+            --scrollbar-track: rgba(255, 247, 237, 0.8);
+            --avatar-background: #FDBA74; /* orange-300 */
+        }
+
+
+        /* Scrollbar styles - Use CSS Variables */
+        ::-webkit-scrollbar { width: 8px; height: 8px;}
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-left: 1.5px solid var(--border-stroke); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border: 1.5px solid var(--border-stroke); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { filter: brightness(1.1); }
+
+        /* Background Image */
+        body {
+            font-family: 'Patrick Hand', cursive;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-image: url('images/crushed_bg.jpg'); /* !!! ADJUST PATH IF NEEDED !!! */
+            background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed;
+            background-color: var(--bg-paper); /* Use variable for fallback */
+            color: var(--text-ink); /* Set base text color */
+            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth theme transitions */
+            overflow: hidden; /* Prevent body scroll with full height panels */
+        }
+
+        /* Modal styles (unchanged logic) */
+        .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; }
+        .modal-content-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 1rem; }
+        .modal-content { position: relative; opacity: 0; transform-origin: center; filter: url(#sketchy); }
+
+        /* Sketch Effect */
+        .sketch-effect { filter: url(#sketchy); }
+        ion-icon { font-size: 1.6rem; vertical-align: middle; }
+
+        /* Focus Ring - Use CSS Variable */
+        *:focus { outline: none; }
+        *:focus-visible { box-shadow: theme('boxShadow.focus'); border-radius: theme('borderRadius.DEFAULT'); }
+
+        /* Base Element Styles - Use CSS Variables */
+         button, input[type="text"], input[type="file"] {
+             border-width: theme('borderWidth.2');
+             border-color: var(--border-stroke);
+             box-shadow: theme('boxShadow.DEFAULT');
+             transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background-color 0.2s ease, border-color 0.2s ease; /* Add transitions */
+         }
+         button:hover:not(.action-panel-btn) { /* Exclude action panel buttons from hover transform */
+            transform: translate(1px, 1px);
+            box-shadow: theme('boxShadow.md');
+         }
+         button:active:not(.action-panel-btn) { /* Exclude action panel buttons from active transform */
+            transform: translate(2px, 2px);
+            box-shadow: theme('boxShadow.DEFAULT');
+         }
+         button:disabled {
+             opacity: 0.6; cursor: not-allowed; box-shadow: none !important; transform: none !important;
+             background-color: #e5e7eb !important; /* Keep disabled fixed color */
+             color: #6b7280 !important;
+             border-color: #9ca3af !important;
+         }
+         input[type="text"] { padding: 0.75rem 1rem; }
+         input[type="text"]:focus {
+             border-color: var(--accent-primary); /* Use variable */
+             box-shadow: theme('boxShadow.inner'), theme('boxShadow.focus');
+         }
+
+         /* Theme Swatch Style (adjusted margins/padding) */
+         .theme-swatch {
+             width: auto; /* Fit content */
+             padding: 0.25rem 0.7rem; /* Slightly smaller padding */
+             border-radius: theme('borderRadius.lg');
+             cursor: pointer;
+             transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background-color 0.2s ease, filter 0.2s ease;
+             border-width: 2px;
+             border-color: var(--border-stroke);
+             box-shadow: theme('boxShadow.DEFAULT');
+             display: inline-block;
+             margin: 0.2rem; /* Smaller margin */
+             font-size: 0.85rem; /* Slightly smaller text */
+             font-weight: 600;
+             text-align: center;
+         }
+         .theme-swatch:hover { transform: scale(1.05) translate(1px, 1px); box-shadow: theme('boxShadow.md'); filter: brightness(1.05);}
+         .theme-swatch.selected {
+            border-width: 3px;
+            transform: scale(1.03);
+            box-shadow: theme('boxShadow.md');
+            filter: brightness(1.1);
+            background-color: var(--accent-primary);
+            color: var(--text-ink);
+         }
+         .theme-swatch:not(.selected) {
+             background-color: var(--bg-paper);
+             color: var(--text-ink);
+         }
+
+        /* Action Panel Button Style */
+        .action-panel-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: theme('borderRadius.lg');
+            background-color: var(--bubble-other);
+            color: var(--text-ink);
+            border-width: theme('borderWidth.2');
+            border-color: var(--border-stroke);
+            box-shadow: theme('boxShadow.DEFAULT');
+            transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.1s ease, transform 0.1s ease;
+        }
+        .action-panel-btn:hover {
+             background-color: var(--accent-tertiary);
+             color: var(--text-ink); /* Adjust if needed for contrast */
+             transform: scale(1.03);
+             box-shadow: theme('boxShadow.md');
+        }
+        .action-panel-btn ion-icon {
+            font-size: 1.8rem; /* Slightly larger icon */
+        }
+
+    </style>
+</head>
+<body>
+
+    <svg width="0" height="0" style={{ position: 'absolute', top: '-100px', left: '-100px' }}>
+        <defs>
+            <filter id="sketchy">
+                <feTurbulence type="fractalNoise" baseFrequency="0.02 0.03" numOctaves="1" result="turbulence" seed="5"/>
+                <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- Constants ---
+        const CHAT_USERNAME_KEY = 'scriblChatUsername_v5';
+        const CHAT_MESSAGES_KEY = 'scriblChatMessages_v5';
+        const CHAT_THEME_KEY = 'scriblChatTheme_v5';
+        const DEFAULT_THEME = 'scribl';
+
+        // --- Theme Definitions ---
+        const THEMES = {
+            scribl: { name: 'Scribl', class: '' },
+            ocean: { name: 'Ocean', class: 'theme-ocean' },
+            forest: { name: 'Forest', class: 'theme-forest' },
+            sunset: { name: 'Sunset', class: 'theme-sunset' },
+        };
+
+
+        // --- Mock Data (unchanged) ---
+        const initialChats = { /* ... same data ... */
+             'user1': { id: 'user1', type: 'individual', name: 'Nova Lane', avatar: '👩‍💻', punchline: 'Curiouser and curiouser!', messages: [ { id: 1, sender: 'Nova Lane', text: 'Hey there! How are you?', timestamp: '10:30 AM', isSender: false }, { id: 2, sender: 'You', text: 'Hi there! Doing great, thanks! 😊', timestamp: '10:31 AM', isSender: true }, { id: 3, sender: 'Nova Lane', text: 'Awesome! Working on anything fun?', timestamp: '10:32 AM', isSender: false }, { id: 31, sender: 'You', text: 'Just this chat app demo!', timestamp: '10:33 AM', isSender: true }, ] },
+            'user2': { id: 'user2', type: 'individual', name: 'Charlotte Reed', avatar: '👷‍♂️', punchline: 'Can we code it? Yes, we can!', messages: [ { id: 4, sender: 'Bob The Builder', text: 'Can we fix it?', timestamp: 'Yesterday', isSender: false }, { id: 41, sender: 'You', text: 'Yes we can!', timestamp: 'Yesterday', isSender: true }, ] },
+            'user3': { id: 'user3', type: 'individual', name: 'Selena', avatar: '🚀', punchline: 'To infinity and beyond the syntax!', messages: [ { id: 9, sender: 'Captain Coder', text: 'Ready for launch?', timestamp: 'Mon 8:15 PM', isSender: false }, ] },
+            'user4': { id: 'user4', type: 'individual', name: 'James Roar', avatar: '✨', punchline: 'Making pixels sparkle.', messages: [ { id: 10, sender: 'Design Dara', text: 'Sent you the latest mockups.', timestamp: 'Mon 5:00 PM', isSender: false }, { id: 11, sender: 'You', text: 'Looking now, they look great!', timestamp: 'Mon 5:05 PM', isSender: true }, { id: 12, sender: 'Design Dara', text: 'Perfect! Let me know if any tweaks are needed.', timestamp: 'Mon 5:06 PM', isSender: false }, ] },
+            'group1': { id: 'group1', type: 'group', name: 'Mad Devs', avatar: '🎨', participants: ['You', 'Nova', 'Charlotte', 'Selena'], messages: [ { id: 5, sender: 'Charlie', text: 'Meeting reminder for 2 PM!', timestamp: '9:00 AM', isSender: false }, { id: 6, sender: 'You', text: 'Got it, thanks!', timestamp: '9:01 AM', isSender: true }, { id: 7, sender: 'Nova', text: '👍', timestamp: '9:05 AM', isSender: false }, { id: 71, sender: 'Dara', text: 'Will join shortly, finishing up a wireframe.', timestamp: '1:55 PM', isSender: false }, ] },
+            'group2': { id: 'group2', type: 'group', name: 'Weekend Lams', avatar: '🎉', participants: ['You', 'Roar', 'Orion', 'Freya'], messages: [ { id: 8, sender: 'Dana', text: 'Any ideas for Saturday?', timestamp: '11:00 AM', isSender: false }, { id: 81, sender: 'You', text: 'Maybe hiking?', timestamp: '11:05 AM', isSender: true }, { id: 82, sender: 'Bob', text: 'Sounds good! What trail?', timestamp: '11:06 AM', isSender: false }, { id: 83, sender: 'Ed', text: 'I\'m in!', timestamp: '11:10 AM', isSender: false }, ] },
+            'group3': { id: 'group3', type: 'group', name: 'Genius Guys', avatar: '🌕', participants: ['You', 'James Roar', 'Selena'], messages: [ { id: 13, sender: 'Captain Coder', text: 'Code review scheduled for tomorrow 10 AM.', timestamp: '4:30 PM', isSender: false }, { id: 14, sender: 'Nova', text: 'Acknowledged.', timestamp: '4:31 PM', isSender: false }, { id: 15, sender: 'You', text: 'See you there!', timestamp: '4:35 PM', isSender: true }, ] }
+        };
+
+
+        // --- Helper Functions (unchanged) ---
+        const getInitials = (name) => { if (!name || typeof name !== 'string') return '?'; const names = name.trim().split(' '); if (names.length === 1) return names[0][0] ? names[0][0].toUpperCase() : '?'; return ((names[0][0] || '') + (names[names.length - 1][0] || '')).toUpperCase(); };
+        const formatTimestamp = (date) => { if (!(date instanceof Date)) { date = new Date(); } return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }); };
+
+        // --- Components ---
+
+        // Avatar Component (Unchanged)
+        function Avatar({ avatar, name, size = 'md', className = '', onClick }) {
+            const sizeClasses = { sm: 'w-9 h-9 text-sm', md: 'w-11 h-11 text-base', lg: 'w-14 h-14 text-lg', xl: 'w-24 h-24 text-3xl' };
+            const baseClasses = `flex-shrink-0 rounded-full flex items-center justify-center bg-[var(--avatar-background)] text-ink font-bold border-2 border-stroke shadow-md ${sizeClasses[size]} ${className} ${onClick ? 'cursor-pointer hover:scale-[1.03] active:scale-[0.98] transform transition-transform duration-150 sketch-effect' : 'sketch-effect'}`;
+            const isEmoji = /\p{Emoji}/u.test(avatar);
+            const content = isEmoji ? <span className={`text-${size === 'xl' ? '5xl' : size === 'lg' ? '3xl' : '2xl'}`}>{avatar}</span> : getInitials(name);
+            return <div className={baseClasses} title={name} onClick={onClick}>{content}</div>;
+        }
+
+         // AnimatedModal (Unchanged)
+         function AnimatedModal({ isOpen, onClose, children }) {
+            const [isRendered, setIsRendered] = useState(false);
+            const [animationClass, setAnimationClass] = useState('');
+
+            useEffect(() => {
+                let timer;
+                if (isOpen) {
+                    setIsRendered(true);
+                    requestAnimationFrame(() => { setAnimationClass('animate-modal-backdrop-in animate-modal-content-in'); });
+                } else if (isRendered) {
+                    setAnimationClass('animate-modal-backdrop-out animate-modal-content-out');
+                    timer = setTimeout(() => { setIsRendered(false); setAnimationClass(''); }, 300);
+                }
+                return () => clearTimeout(timer);
+            }, [isOpen, isRendered]);
+
+            if (!isRendered) return null;
+
+            const handleBackdropClick = (e) => { if (e.target === e.currentTarget) onClose(); };
+
+            return (
+                <div className={`modal-backdrop ${animationClass.split(' ')[0] || ''}`} onClick={handleBackdropClick}>
+                    <div className="modal-content-wrapper">
+                       {React.cloneElement(children, {
+                           className: `${children.props?.className || ''} modal-content ${animationClass.split(' ')[1] || ''} border-3 border-stroke shadow-xl`,
+                           onClick: (e) => { e.stopPropagation(); children.props?.onClick?.(e); }
+                       })}
+                    </div>
+                </div>
+            );
+         }
+
+         // Username Prompt Modal (Unchanged)
+         function UsernamePrompt({ onNameSubmit }) {
+             const [nameInput, setNameInput] = useState('');
+             const handleSubmit = (e) => { e.preventDefault(); if (nameInput.trim()) { onNameSubmit(nameInput.trim()); } };
+             return (
+                 <AnimatedModal isOpen={true} onClose={() => {}}>
+                     <form onSubmit={handleSubmit} className="bg-paper rounded-2xl w-full max-w-sm p-8 text-center">
+                         <h2 className="text-4xl font-bold text-ink mb-4">Welcome Pal!</h2>
+                         <p className="text-ink mb-6 text-lg">Gimme your name:</p>
+                         <input type="text" autoFocus value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Scribble Name Here..." className="w-full rounded-lg text-lg mb-6 bg-bubble-other shadow-inner" required />
+                         <button type="submit" className="w-full px-6 py-3 bg-accent-primary text-bubble-user-text font-semibold rounded-lg text-lg" disabled={!nameInput.trim()}>
+                             Let's Doodle! <span className="ml-1">✏️</span>
+                         </button>
+                     </form>
+                 </AnimatedModal>
+             );
+         }
+
+        // Call Popup Modal (Unchanged)
+        function CallPopup({ isOpen, onClose, targetName, targetAvatar, callType }) {
+             const callTypeText = callType === 'video' ? 'Video Doodle' : 'Audio Scribble';
+             const icon = callType === 'video' ? 'videocam' : 'call';
+             return (
+                 <AnimatedModal isOpen={isOpen} onClose={onClose}>
+                     <div className="bg-paper rounded-2xl flex flex-col items-center space-y-6 p-8 w-full max-w-md text-center">
+                         <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-ink transition z-10 p-1 border-0 shadow-none hover:transform-none active:transform-none"> <ion-icon name="close-outline" style={{ fontSize: '2rem' }}></ion-icon> </button>
+                         <p className="text-xl font-semibold text-ink/80"><ion-icon name={`${icon}-outline`} class="mr-1"></ion-icon> {callTypeText} with</p>
+                         <Avatar avatar={targetAvatar} name={targetName} size="xl"/>
+                         <h2 className="text-4xl font-bold text-ink">{targetName}</h2>
+                         <p className="text-ink/70 animate-pulse text-lg">Connecting lines...</p>
+                         <div className="flex space-x-4 pt-4">
+                             <button className="p-3 bg-bubble-other rounded-full text-bubble-other-text" title="Mute"><ion-icon name="mic-off-outline" size="large"></ion-icon></button>
+                             {callType === 'video' && (<button className="p-3 bg-bubble-other rounded-full text-bubble-other-text" title="Toggle Video"><ion-icon name="videocam-off-outline" size="large"></ion-icon></button>)}
+                             <button className="p-3 bg-bubble-other rounded-full text-bubble-other-text" title="Speaker"><ion-icon name="volume-high-outline" size="large"></ion-icon></button>
+                         </div>
+                         <button onClick={onClose} className="mt-8 px-8 py-3 bg-accent-danger text-white font-bold rounded-lg text-lg flex items-center space-x-2">
+                             <ion-icon name="call-outline" class="transform rotate-135"></ion-icon> <span>Erase Call</span>
+                         </button>
+                     </div>
+                 </AnimatedModal>
+             );
+         }
+
+        // Profile Modal (REMOVED Theme Selection)
+        function ProfileModal({ isOpen, onClose, username, onChangeName, onLogout }) { // Removed theme props
+             const [newName, setNewName] = useState(username);
+             const [isEditing, setIsEditing] = useState(false);
+
+             useEffect(() => { if (isOpen) { setNewName(username); setIsEditing(false); } }, [isOpen, username]);
+
+             const handleSaveName = () => { if (newName.trim() && newName.trim() !== username) { onChangeName(newName.trim()); } setIsEditing(false); };
+             const handleCancelEdit = () => { setNewName(username); setIsEditing(false); };
+
+             return (
+                 <AnimatedModal isOpen={isOpen} onClose={onClose}>
+                     <div className="bg-paper rounded-2xl p-8 w-full max-w-sm">
+                         <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-ink transition z-10 p-1 border-0 shadow-none hover:transform-none active:transform-none"> <ion-icon name="close-outline" style={{ fontSize: '2rem' }}></ion-icon> </button>
+                         <div className="flex flex-col items-center space-y-5">
+                            <h2 className="text-3xl font-bold text-ink mb-1">Your Scribble</h2>
+                            <Avatar avatar="😎" name={username} size="lg" />
+
+                            {/* Name Display/Edit Section */}
+                            {isEditing ? (
+                                <div className="w-full space-y-3 pt-2">
+                                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full rounded-lg bg-bubble-other shadow-inner text-lg" autoFocus />
+                                    <div className="flex space-x-3 justify-center">
+                                         <button onClick={handleSaveName} className="px-4 py-2 bg-accent-primary text-bubble-user-text font-semibold rounded-md text-base">Save</button>
+                                         <button onClick={handleCancelEdit} className="px-4 py-2 bg-bubble-other text-bubble-other-text font-semibold rounded-md text-base">Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center">
+                                     <p className="text-2xl font-semibold text-ink">{username}</p>
+                                     <button onClick={() => setIsEditing(true)} className="mt-2 text-sm text-blue-600 hover:text-blue-800 transition flex items-center justify-center mx-auto border-0 shadow-none p-1 hover:transform-none active:transform-none"> <ion-icon name="pencil-outline" class="mr-1"></ion-icon> Re-draw Name </button>
+                                </div>
+                            )}
+
+                            {/* Theme Selection Removed */}
+
+                             <button onClick={onLogout} className="w-full mt-6 px-6 py-3 bg-accent-danger-light text-accent-danger font-semibold rounded-lg text-lg flex items-center justify-center space-x-2">
+                                 <ion-icon name="log-out-outline"></ion-icon> <span>Erase Session</span>
+                             </button>
+                         </div>
+                     </div>
+                 </AnimatedModal>
+             );
+         }
+
+        // Contact/Group Info Modal (Unchanged)
+        function ContactInfoModal({ isOpen, onClose, contactData }) {
+             if (!contactData) return null;
+             const isGroup = contactData.type === 'group';
+             return (
+                 <AnimatedModal isOpen={isOpen} onClose={onClose}>
+                     <div className="bg-paper rounded-2xl p-8 w-full max-w-md">
+                         <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-ink transition z-10 p-1 border-0 shadow-none hover:transform-none active:transform-none"> <ion-icon name="close-outline" style={{ fontSize: '2rem' }}></ion-icon> </button>
+                         <div className="flex flex-col items-center space-y-4 text-center">
+                            <Avatar avatar={contactData.avatar} name={contactData.name} size="xl"/>
+                            <h2 className="text-4xl font-bold text-ink">{contactData.name}</h2>
+                            {isGroup ? (
+                                <div className="w-full pt-3">
+                                    <h3 className="text-xl font-semibold text-ink/80 mb-2">Sketch Crew ({contactData.participants.length})</h3>
+                                    <ul className="space-y-1 text-left max-h-48 overflow-y-auto px-4 text-lg text-ink">
+                                        {contactData.participants.map(p => (
+                                            <li key={p} className="flex items-center space-x-2">
+                                                <span className="text-accent-secondary text-2xl font-bold inline-block transform -translate-y-px">*</span>
+                                                <span>{p}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : ( <p className="text-ink/70 italic px-4 text-lg">"{contactData.punchline || 'Just happy to be sketching!'}"</p> )}
+                             <button onClick={onClose} className="mt-6 px-8 py-2 bg-bubble-other text-bubble-other-text font-semibold rounded-md text-lg">Done</button>
+                         </div>
+                     </div>
+                 </AnimatedModal>
+             );
+         }
+
+        // Message Bubble Component (Unchanged)
+        function MessageBubble({ message, username }) {
+            const isSender = message.sender === username;
+            const bubbleClasses = isSender
+                ? 'bg-bubble-user text-bubble-user-text ml-auto rounded-bl-xl shadow-md'
+                : 'bg-bubble-other text-bubble-other-text mr-auto rounded-br-xl shadow-md';
+            const containerClasses = `flex ${isSender ? 'justify-end' : 'justify-start'} mb-4 animate-slide-in-up`;
+            return (
+                <div className={`${containerClasses} sketch-effect`}>
+                    <div className={`max-w-[80%] md:max-w-[70%] p-3 border-2 border-stroke rounded-xl ${bubbleClasses}`}>
+                        {!isSender && <p className="text-xs font-bold text-accent-secondary mb-1">{message.sender}</p>}
+                        {message.isImage ? (<img src={message.imageUrl} alt="Shared doodle" className="rounded-lg max-w-xs my-1 object-contain cursor-pointer hover:brightness-110 transition border border-stroke" onClick={() => window.open(message.imageUrl)} />)
+                         : (<p className="text-base whitespace-pre-wrap break-words leading-snug">{message.text}</p>)}
+                         <p className={`text-[11px] mt-1.5 opacity-80 ${isSender ? 'text-right' : 'text-left'}`}>{message.timestamp}</p>
+                    </div>
+                </div> );
+         }
+
+        // Message Input Component (Unchanged)
+        function MessageInput({ onSendMessage, onAttachImage }) {
+             const [messageText, setMessageText] = useState('');
+             const fileInputRef = useRef(null);
+             const handleSend = (e) => { e.preventDefault(); if (messageText.trim()) { onSendMessage(messageText); setMessageText(''); } };
+             const triggerFileSelect = () => fileInputRef.current?.click();
+             const handleFileSelect = (event) => { const file = event.target.files[0]; if (file && file.type.startsWith('image/')) { const reader = new FileReader(); reader.onloadend = () => { onAttachImage(reader.result); }; reader.readAsDataURL(file); } else if (file) { alert("Gotta be an image scribble!"); } event.target.value = null; };
+             return (
+                 <form onSubmit={handleSend} className="p-4 border-t-3 border-stroke bg-paper mt-auto flex-shrink-0 rounded-b-xl">
+                     <div className="flex items-center space-x-3">
+                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+                         <button type="button" onClick={triggerFileSelect} className="p-2 text-ink/70 hover:text-accent-secondary rounded-lg bg-bubble-other" title="Attach Doodle"><ion-icon name="attach-outline" size="large"></ion-icon></button>
+                         <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Scribble something..." className="flex-1 rounded-lg bg-bubble-other shadow-inner text-lg text-bubble-other-text" />
+                         <button type="submit" className="px-5 py-2 bg-accent-primary text-bubble-user-text font-semibold rounded-lg text-lg flex items-center" disabled={!messageText.trim()}><ion-icon name="send-outline" class="mr-1 text-lg"></ion-icon> Send</button>
+                     </div>
+                 </form> );
+         }
+
+        // Chat Panel Component (Unchanged)
+        function ChatPanel({ activeChat, username, onSendMessage, onAttachImage, onInitiateCall }) {
+            const messagesEndRef = useRef(null);
+            const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, []);
+            useEffect(() => { setTimeout(scrollToBottom, 150); }, [activeChat?.messages, activeChat?.id, scrollToBottom]);
+
+            if (!activeChat) {
+                return (
+                    <div className="flex-1 flex flex-col items-center justify-center text-ink/70 bg-paper/95 rounded-2xl shadow-lg p-4 text-center border-3 border-stroke sketch-effect">
+                        <span className="text-6xl mb-4 animate-bounce-in">✏️</span>
+                        <h2 className="text-2xl font-semibold text-ink">Ready to Scribl?</h2>
+                        <p className="text-lg">Pick a chat on the left!</p>
+                    </div> );
+            }
+            const handleCallClick = (type) => onInitiateCall(type, activeChat.name, activeChat.avatar);
+            return (
+                 <div className="flex-1 flex flex-col bg-paper/95 rounded-2xl shadow-lg overflow-hidden border-3 border-stroke sketch-effect">
+                    {/* Header */}
+                    <div className="p-4 border-b-3 border-stroke bg-paper flex items-center justify-between space-x-3 flex-shrink-0">
+                        <div className="flex items-center space-x-3 overflow-hidden min-w-0">
+                            <Avatar avatar={activeChat.avatar} name={activeChat.name} size="md" />
+                            <div className="overflow-hidden min-w-0">
+                                <h2 className="text-xl font-bold text-ink truncate">{activeChat.name}</h2>
+                                {activeChat.type === 'group' && (<p className="text-sm text-ink/70 truncate">{activeChat.participants.join(', ')}</p>)}
+                            </div>
+                        </div>
+                        <div className="flex space-x-2 flex-shrink-0">
+                            <button onClick={() => handleCallClick('audio')} className="p-2 text-ink/70 hover:text-accent-secondary rounded-lg bg-bubble-other" title={`Audio Scribble ${activeChat.name}`}><ion-icon name="call-outline" size="large"></ion-icon></button>
+                            <button onClick={() => handleCallClick('video')} className="p-2 text-ink/70 hover:text-accent-tertiary rounded-lg bg-bubble-other" title={`Video Doodle ${activeChat.name}`}><ion-icon name="videocam-outline" size="large"></ion-icon></button>
+                         </div>
+                    </div>
+                    {/* Message Area */}
+                    <div className="flex-1 p-4 overflow-y-auto bg-transparent">
+                        {activeChat.messages.map(msg => (<MessageBubble key={msg.id} message={msg} username={username} />))}
+                        <div ref={messagesEndRef} />
+                    </div>
+                    <MessageInput onSendMessage={onSendMessage} onAttachImage={onAttachImage} />
+                </div> );
+        }
+
+        // Sidebar Component (REMOVED Profile Section at bottom)
+        function Sidebar({ chats, activeChatId, onSelectChat, showGroups, onToggleView, onShowContactInfo }) { // Removed username, onShowProfile
+            const filteredChats = Object.values(chats).filter(chat => showGroups ? chat.type === 'group' : chat.type === 'individual');
+            const handleAvatarClick = (e, chat) => { e.stopPropagation(); onShowContactInfo(chat); };
+
+            return (
+                <div className="w-full md:w-72 lg:w-80 p-4 bg-paper/95 backdrop-blur-lg rounded-2xl shadow-xl flex flex-col h-full border-3 border-stroke sketch-effect flex-shrink-0">
+                    {/* Header */}
+                    <div className="mb-4 flex-shrink-0 bg-paper p-3 -m-3 rounded-t-xl border-b-3 border-stroke">
+                        <h1 className="text-5xl font-extrabold text-ink mb-5 tracking-tight text-center">Scribl</h1>
+                        <div className="flex space-x-2 mb-4">
+                            <button onClick={() => onToggleView(false)} className={`flex-1 py-2 px-3 rounded-lg text-base font-semibold transition duration-150 ${!showGroups ? 'bg-accent-primary text-bubble-user-text scale-[1.02] shadow-md' : 'bg-bubble-other text-bubble-other-text hover:brightness-95'}`}>Chats</button>
+                            <button onClick={() => onToggleView(true)} className={`flex-1 py-2 px-3 rounded-lg text-base font-semibold transition duration-150 ${showGroups ? 'bg-accent-primary text-bubble-user-text scale-[1.02] shadow-md' : 'bg-bubble-other text-bubble-other-text hover:brightness-95'}`}>Groups</button>
+                        </div>
+                    </div>
+                    {/* Chat List Area */}
+                    <div className="flex-1 overflow-y-auto -mr-2 pr-2 space-y-2">
+                        {filteredChats.map(chat => {
+                             const lastMessage = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
+                             const lastMessageText = lastMessage ? (lastMessage.isImage ? '✏️ Doodle' : lastMessage.text) : 'Start sketching!';
+                             const isActive = activeChatId === chat.id;
+                             const activeClasses = 'bg-accent-primary/30 border-stroke shadow-inner';
+                             const hoverClasses = 'hover:bg-accent-tertiary/30';
+
+                             return (
+                                <div key={chat.id} onClick={() => onSelectChat(chat.id)} className={`flex items-center p-3 rounded-xl cursor-pointer transition duration-150 group border-2 border-transparent ${isActive ? activeClasses : hoverClasses}`}>
+                                    <Avatar avatar={chat.avatar} name={chat.name} size="md" onClick={(e) => handleAvatarClick(e, chat)} className="group-hover:shadow-lg" />
+                                    <div className="ml-3 overflow-hidden min-w-0">
+                                        <p className="font-semibold text-ink truncate text-lg">{chat.name}</p>
+                                        <p className="text-sm text-ink/70 truncate">{lastMessageText}</p>
+                                    </div>
+                                </div> )
+                        })}
+                    </div>
+                    {/* User Profile Section Removed */}
+                </div> );
+        }
+
+        // --- NEW: Action Panel Component ---
+        function ActionPanel({
+            username,
+            theme,
+            onThemeChange,
+            onShowProfile,
+            onShowNotifications, // Placeholder prop
+            onShowAccounts,     // Placeholder prop
+            onShowHelp          // Placeholder prop
+        }) {
+            return (
+                 <div className="w-20 p-4 bg-paper/95 backdrop-blur-lg rounded-2xl shadow-xl flex flex-col items-center space-y-5 h-full border-3 border-stroke sketch-effect flex-shrink-0">
+                    {/* Profile Button */}
+                    <button onClick={onShowProfile} className="action-panel-btn" title="My Scribble">
+                        <Avatar avatar="😎" name={username} size="sm" className="border-0 shadow-none w-8 h-8" />
+                    </button>
+
+                    {/* Placeholder Action Buttons */}
+                    <button onClick={onShowNotifications} className="action-panel-btn" title="Notifications">
+                        <ion-icon name="notifications-outline"></ion-icon>
+                    </button>
+                     <button onClick={onShowAccounts} className="action-panel-btn" title="Accounts">
+                        <ion-icon name="people-outline"></ion-icon>
+                    </button>
+
+                    {/* Theme Selection Section */}
+                    <div className="pt-4 border-t border-stroke/30 w-full flex-1 flex flex-col items-center overflow-hidden">
+                         <p className="text-xs font-semibold text-ink/80 mb-2 text-center">Theme</p>
+                         <div className="flex flex-col space-y-2 items-center overflow-y-auto pr-1 -mr-1 pb-2">
+                             {Object.entries(THEMES).map(([themeKey, themeData]) => (
+                                <button
+                                    key={themeKey}
+                                    title={themeData.name}
+                                    className={`theme-swatch w-11 h-11 !p-0 flex items-center justify-center ${theme === themeKey ? 'selected' : ''}`} // Adjusted styles for small vertical swatches
+                                    onClick={() => onThemeChange(themeKey)}
+                                >
+                                     {/* Simple visual indicator instead of text */}
+                                     <span className={`block w-5 h-5 rounded-full border border-stroke/50 ${themeKey === 'scribl' ? 'bg-accent-primary' : themeKey === 'ocean' ? 'bg-sky-400' : themeKey === 'forest' ? 'bg-lime-400' : 'bg-orange-400'}`}></span>
+                                </button>
+                            ))}
+                         </div>
+                    </div>
+
+                    {/* Help Button at bottom */}
+                     <button onClick={onShowHelp} className="action-panel-btn mt-auto" title="Help">
+                        <ion-icon name="help-circle-outline"></ion-icon>
+                    </button>
+                </div>
+            );
+        }
+
+
+        // Main App Component (Manages Theme state, Layout adjusted)
+        function App() {
+            const [username, setUsername] = useState(null);
+            const [showNamePrompt, setShowNamePrompt] = useState(false);
+            const [chats, setChats] = useState(() => { try { const saved = localStorage.getItem(CHAT_MESSAGES_KEY); return saved ? JSON.parse(saved) : initialChats; } catch (e) { console.error("LS Load Error:", e); return initialChats; } });
+            const [activeChatId, setActiveChatId] = useState(null);
+            const [showGroups, setShowGroups] = useState(false);
+            const [callState, setCallState] = useState({ isOpen: false, type: null, targetName: null, targetAvatar: null });
+            const [profileModalOpen, setProfileModalOpen] = useState(false);
+            const [contactInfoModalOpen, setContactInfoModalOpen] = useState(false);
+            const [contactInfoData, setContactInfoData] = useState(null);
+            const [theme, setTheme] = useState(() => {
+                return localStorage.getItem(CHAT_THEME_KEY) || DEFAULT_THEME;
+            });
+
+            // --- Effects ---
+            useEffect(() => { const name = localStorage.getItem(CHAT_USERNAME_KEY); if (name) { setUsername(name); } else { setShowNamePrompt(true); } }, []);
+            useEffect(() => { try { localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(chats)); } catch (e) { console.error("LS Save Error:", e); } }, [chats]);
+            useEffect(() => {
+                localStorage.setItem(CHAT_THEME_KEY, theme);
+                const body = document.body;
+                Object.values(THEMES).forEach(t => { if (t.class) body.classList.remove(t.class); });
+                if (THEMES[theme]?.class) { body.classList.add(THEMES[theme].class); }
+            }, [theme]);
+
+            // --- Handlers ---
+            const handleNameSubmit = useCallback((name) => { localStorage.setItem(CHAT_USERNAME_KEY, name); setUsername(name); setShowNamePrompt(false); }, []);
+            const handleSelectChat = useCallback((chatId) => { setActiveChatId(chatId); }, []);
+            const handleToggleView = useCallback((show) => { setShowGroups(show); }, []);
+            const handleShowProfile = useCallback(() => setProfileModalOpen(true), []);
+            const handleCloseProfile = useCallback(() => setProfileModalOpen(false), []);
+            const handleShowContactInfo = useCallback((chatData) => { setContactInfoData(chatData); setContactInfoModalOpen(true); }, []);
+            const handleCloseContactInfo = useCallback(() => setContactInfoModalOpen(false), []);
+            const handleChangeUsername = useCallback((newName) => { setUsername(newName); localStorage.setItem(CHAT_USERNAME_KEY, newName); }, []);
+            const handleLogout = useCallback(() => {
+                localStorage.removeItem(CHAT_USERNAME_KEY);
+                localStorage.removeItem(CHAT_MESSAGES_KEY);
+                localStorage.removeItem(CHAT_THEME_KEY);
+                setUsername(null);
+                setTheme(DEFAULT_THEME);
+                setChats(initialChats);
+                setActiveChatId(null);
+                setProfileModalOpen(false);
+                setShowNamePrompt(true);
+            }, []);
+            const addNewMessage = useCallback((messageData) => { if (!activeChatId || !username) return; const newMessage = { id: Date.now() + Math.random(), sender: username, timestamp: formatTimestamp(new Date()), ...messageData }; setChats(prev => { const updated = JSON.parse(JSON.stringify(prev)); if (updated[activeChatId]) { updated[activeChatId].messages.push(newMessage); } return updated; }); }, [activeChatId, username]);
+            const handleSendMessage = useCallback((text) => { addNewMessage({ text: text, isSender: true, isImage: false }); }, [addNewMessage]);
+            const handleAttachImage = useCallback((imageDataUrl) => { addNewMessage({ text: '', isSender: true, isImage: true, imageUrl: imageDataUrl }); }, [addNewMessage]);
+            const handleInitiateCall = useCallback((type, targetName, targetAvatar) => { setCallState({ isOpen: true, type, targetName, targetAvatar }); }, []);
+            const handleCloseCall = useCallback(() => setCallState(prev => ({ ...prev, isOpen: false })), []);
+            const handleThemeChange = useCallback((newThemeKey) => {
+                if (THEMES[newThemeKey]) { setTheme(newThemeKey); }
+            }, []);
+            // --- NEW: Placeholder Handlers ---
+            const handleShowNotifications = useCallback(() => alert("Notification panel coming soon! 🔔"), []);
+            const handleShowAccounts = useCallback(() => alert("Account management not yet implemented! 🧑‍🤝‍🧑"), []);
+            const handleShowHelp = useCallback(() => alert("Help section under construction! ❓"), []);
+
+
+            // Render logic
+            if (!username && showNamePrompt) return <UsernamePrompt onNameSubmit={handleNameSubmit} />;
+            if (!username && !showNamePrompt) return <div className="flex h-screen items-center justify-center text-ink/70 font-semibold text-xl">Loading Scribbles...</div>;
+
+            const activeChat = chats[activeChatId];
+
+            return (
+                // UPDATED Layout: Use flex for three columns
+                <div className="flex h-screen p-3 md:p-4 space-x-3 md:space-x-4 relative overflow-hidden">
+                    {/* Left Sidebar */}
+                    <Sidebar
+                        chats={chats}
+                        activeChatId={activeChatId}
+                        onSelectChat={handleSelectChat}
+                        showGroups={showGroups}
+                        onToggleView={handleToggleView}
+                        onShowContactInfo={handleShowContactInfo}
+                        // Removed username/onShowProfile props
+                    />
+                    {/* Center Chat Panel (takes remaining space) */}
+                    <ChatPanel
+                        activeChat={activeChat}
+                        username={username}
+                        onSendMessage={handleSendMessage}
+                        onAttachImage={handleAttachImage}
+                        onInitiateCall={handleInitiateCall}
+                    />
+                    {/* Right Action Panel */}
+                    <ActionPanel
+                        username={username}
+                        theme={theme}
+                        onThemeChange={handleThemeChange}
+                        onShowProfile={handleShowProfile}
+                        onShowNotifications={handleShowNotifications}
+                        onShowAccounts={handleShowAccounts}
+                        onShowHelp={handleShowHelp}
+                    />
+
+                    {/* Modals Rendered Here */}
+                    <CallPopup {...callState} isOpen={callState.isOpen} onClose={handleCloseCall} />
+                    {/* ProfileModal no longer needs theme props */}
+                    <ProfileModal
+                        isOpen={profileModalOpen}
+                        onClose={handleCloseProfile}
+                        username={username}
+                        onChangeName={handleChangeUsername}
+                        onLogout={handleLogout}
+                    />
+                    <ContactInfoModal isOpen={contactInfoModalOpen} onClose={handleCloseContactInfo} contactData={contactInfoData} />
+                </div>
+            );
+        }
+
+        // Render the App
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
